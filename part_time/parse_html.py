@@ -241,6 +241,8 @@ def get_new_files():
         shutil.copy(src, tgt)
 
 if __name__ == '__main__':
+    # 第一步：解析html，生成结构化的json，保存到structured_file下
     main()
+    # 第二步：读取structured_file下的json，生成Excel文件
     json2excel()
     # get_new_files()
