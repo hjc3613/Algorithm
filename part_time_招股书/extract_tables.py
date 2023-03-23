@@ -69,6 +69,47 @@ def read_merged_doc(batch_files):
         final_result.extend(cur_doc_content)
     return final_result
 
+def post_process_add_table_tag(content, pat, past_lines=6, continue_lines=3, break_line=None, max_len=100):
+
+    keys = [line if (isinstance(line, str) and pat.search(line) and '续' not in line and len(line)<max_len) else None for line in content]
+    for idx, _line in enumerate(content):
+        # 某些表格如 主要财务数据和财务指标，规则性比较强，往往是 （三） 发行人报告期内的主要财务数据和财务指标，紧接着是（四）、主营业务经营情况
+        # 像这种规则性很强的，当遇到（四）、开头的标识时，即可中断
+        if break_line is not None and isinstance(_line, str) and re.search(break_line, _line):
+            break
+        # 太长的行，直接跳过
+        # if isinstance(_line, str) and len(_line)>max_len:
+        #     continue
+        line = list(_line) if isinstance(_line, tuple) else deepcopy(_line)
+        # 往后看6行，当是list或者匹配到关键词行时，进一步判断，可能会更新当前的line；否则不做任何处理
+        if isinstance(line, list):
+            tb = line[1]
+            first_line = '|'.join(tb[0])
+            for i in range(1, past_lines):
+                pre_idx = idx - i
+                if pre_idx < 0:
+                    break
+                # 向后看，若遇到匹配的行，则属于新的表，并终止
+                if isinstance(content[pre_idx], str) and keys[pre_idx] is not None:
+                    tb = [[f'table_{keys[pre_idx]}']+row for row in tb]
+                    line[1] = tb
+                    break
+                # 如果是list,即表格，那么判断该表格与当前表格的行间隔，若<=3，则判断为连接，否则，属于新起的表格。
+                elif isinstance(content[pre_idx], list):
+                    if i <= continue_lines:
+                        head = deepcopy(content[pre_idx][1][0])
+                        if head[0].startswith('table') or head[0] == 'None':
+                            head_0 = head.pop(0)
+                        else:
+                            head_0 = 'None'
+                        tb = [[head_0] + row for row in tb]
+                        line[1] = tb
+                    else:
+                        tb = [['None']+row for row in tb]
+                        line[1] = tb
+                    break
+            content[idx] = line
+    return content
 ################################################# 表格抽取 ##########################################################
 '''
 主营业务收入
@@ -131,7 +172,8 @@ def extract_table_given_key_zhuyingshourugoucheng(filename, total_doc_content):
         for lineno in find_key_lines_new:
             result.append('#'*100)
             result.extend(total_doc_content[lineno:lineno+6])
-
+    pat = re.compile(r'^.{0,4}营业收入.{0,3}(构成|分析).{0,5}$')
+    result = post_process_add_table_tag(result, pat)
     return result
 
 '''
@@ -160,8 +202,10 @@ def extract_table_given_key_zhuying_different_part(filename, total_doc_content):
     return all_result
 
 '''
-主要财务数据
+主要财务数据和财务指标
 '''
+# 对财务数据和财务指标进行后处理，加上table标签
+
 def extract_table_given_key_zhuyaocaiwushuju(filename, total_doc_content):
     '''
     主要财务收入
@@ -173,6 +217,7 @@ def extract_table_given_key_zhuyaocaiwushuju(filename, total_doc_content):
     patterns = [
         re.compile(r'^三(.+?)主要财务数据[和及与].{0,2}?财务指标'),
         re.compile(r'^三(.+?)主要财务数据$'),
+        re.compile(r'^三(.+?)财务报表$'),
         re.compile(r'^.{0,15}主要财务数据.{0,5}财务指标.{0,5}$')
         # ('营业收入构成', re.compile(r'营业收入[的]?构成')),
         # ('营业收入构成', re.compile(r'营业收入分析')),
@@ -192,6 +237,14 @@ def extract_table_given_key_zhuyaocaiwushuju(filename, total_doc_content):
         for lineno in lineno_key:
             result.append('#'*100)
             result.extend(total_doc_content[lineno:lineno+6])
+
+    pat = re.compile(
+        r'''
+        三.{0,10}财务数据.{0,6}财务指标
+        ''', re.VERBOSE
+    )
+    break_line = re.compile(r'^.{0,2}四.{0,2}、')
+    result = post_process_add_table_tag(result, pat, break_line=break_line)
     return result
 
 '''
@@ -216,6 +269,12 @@ def extract_table_given_key_bencifaxinggaikuang(filename, total_doc_content):
         for lineno in lineno_key:
             result.append('#'*100)
             result.extend(total_doc_content[lineno:lineno+5])
+    pat = re.compile(
+        r'''
+        第三节\s+本次发行概况
+        ''', re.VERBOSE)
+    break_line = re.compile(r'^.{0,2}二、')
+    result = post_process_add_table_tag(result, pat, past_lines=4, continue_lines=3, break_line=break_line)
     return result
 
 '''
@@ -343,15 +402,18 @@ def post_process2(content):
     keys = [line if (isinstance(line, str) and pat.search(line) and '续' not in line) else None for line in content]
     for idx, _line in enumerate(content):
         line = list(_line) if isinstance(_line, tuple) else deepcopy(_line)
+        # 往后看6行，当是list或者匹配到关键词行时，进一步判断，可能会更新当前的line；否则不做任何处理
         if isinstance(line, list):
             tb = line[1]
             first_line = '|'.join(tb[0])
             for i in range(1, 6):
                 pre_idx = idx - i
+                # 向后看，若遇到匹配的行，则属于新的表，并终止
                 if isinstance(content[pre_idx], str) and keys[pre_idx] is not None:
                     tb = [[f'table_{keys[pre_idx]}']+row for row in tb]
                     line[1] = tb
                     break
+                # 如果是list,即表格，那么判断该表格与当前表格的行间隔，若<=3，则判断为连接，否则，属于新起的表格。
                 elif isinstance(content[pre_idx], list):
                     if i <= 3:
                         head = deepcopy(content[pre_idx][1][0])
@@ -442,8 +504,13 @@ def extract_table_given_key_guben_bianhua(filename, total_doc_content):
         # with open(f'tmp3_股本变化分析/{filename}.txt', mode='w', encoding='utf8') as f:
         #     f.write('\n'.join([' | '.join(i) for i in guben_bianhua_table]))
         for lineno in guben_bianhua_table:
-            result.append('#'*100)
+
             result.extend(total_doc_content[lineno-4:lineno+2])
+            result.append('#' * 100)
+
+    pat = re.compile(r'^.{0,2}一.{0,2}本次发行前后')
+    break_line = re.compile(r'######')
+    result = post_process_add_table_tag(result, pat, break_line=break_line)
     return result
 
 '''
@@ -492,6 +559,17 @@ def extract_table_given_key_yuangong_zhuanye_xueli(filename, total_doc_content):
     for lineno in lineno_key:
         result.append('#'*100)
         result.extend(total_doc_content[lineno:lineno+4])
+
+    pat = re.compile(
+        r'''
+        专业结构|
+        专业构成|
+        学历结构|
+        学历构成|
+        教育程度
+        ''',
+        re.VERBOSE
+    )
     return result
 
 '''
@@ -499,7 +577,7 @@ def extract_table_given_key_yuangong_zhuanye_xueli(filename, total_doc_content):
 '''
 def extract_table_given_key_top_five_kehu(filename, total_doc_content):
     result = []
-    pat = re.compile(r'报告期(内|各期)?.{0,7}五[大名]客户.{0,3}(销售.{0,3}情况|应收账款)'
+    pat = re.compile(r'报告期(内|各期)?.{0,7}五[大名]客户.{0,3}(销售.{0,5}情况|应收账款)'
                      r'|主要客户.{0,3}销售.{0,2}情况'
                      r'|应收账款.{0,3}五大客户'
                      r'|报告期(内|各期)?.{0,8}销售.{0,5}前五名客户'
@@ -558,7 +636,11 @@ def extract_table_given_key_top_five_gongyings(filename, total_doc_content):
             # if not below_tables:continue
             # result.extend(below_tables)
             result.extend(below)
+            result.append('#'*50)
             # break
+    pat = re.compile(r'^.{0,3}报告期(内|各期)?.{0,10}(前五|主要).{0,3}(原材料)?供应商.{0,4}(采购)|^.{0,3}前五名供应商采购情况.{0,4}$|^.{0,4}报告期.{0,13}前五.{0,7}供应商.{0,3}情况.{0,9}$')
+    break_line = re.compile(r'#######')
+    result = post_process_add_table_tag(result, pat, break_line=break_line)
     return result
 
 '''
@@ -718,7 +800,7 @@ def yewu_yu_jishu_chapter(filename, total_doc_content, sub_dir):
         yewu_and_jishu = []
 
     df = get_hierarchy_of_chapter(yewu_and_jishu)
-    save_path = os.path.join('最新文件抽取结果', '第六节业务与技术', sub_dir, filename + '.xlsx')
+    save_path = os.path.join('最新文件抽取结果', sub_dir, '第六节业务与技术', filename + '.xlsx')
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     df.to_excel(save_path)
     return yewu_and_jishu
@@ -728,8 +810,8 @@ def yewu_yu_jishu_chapter(filename, total_doc_content, sub_dir):
 def process_all_file_concurrent(filename, file_batch, root, sub_dir):
     file_batch = [os.path.join(root, sub_dir, i) for i in file_batch]
     total_doc_content = read_merged_doc(file_batch)
-    # # 业务与技术章节提取
-    # result_yewu_and_jishu = yewu_yu_jishu_chapter(filename, total_doc_content, sub_dir)
+    # 业务与技术章节提取
+    result_yewu_and_jishu = yewu_yu_jishu_chapter(filename, total_doc_content, sub_dir)
     #经营成果分析
     result_jingyingchengguo = extract_table_given_key_yingyeshouwu_analize(filename, total_doc_content)
     # 主要财务数据和财务指标
@@ -793,6 +875,8 @@ def main():
         'batch6-主',
         'batch7-主',
         'batch8-主',
+        'batch9-主',
+        'batch10-主',
     ]
     # sub_dirs = ['batch7-主', 'batch7-次']
     # sub_dirs = ['batch1', 'batch1-次']
@@ -802,7 +886,7 @@ def main():
         # all_files = [i for i in all_files if i.startswith('zg-688004')]
         merged = merge_files(all_files)
         merged = [(filename, file_batch, root, sub_dir) for filename, file_batch in merged
-                  # if filename == '[688506] 百利天恒首次公开发行股票并在科创板上市招股说明书'
+                  # if filename == 'zg-688020'
                   ]
         if multi_p:
             pool = Pool(multi_p)

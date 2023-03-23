@@ -27,8 +27,8 @@ def pdf_spliter(in_file, out_prefix, max_pages):
 
 def main():
     root = r'C:\Users\hujunchao\Documents\PdfDir\original\招股书'
-    sub_dir_in = [ 'batch8']
-    sub_dir_out = [ 'batch8-split']
+    sub_dir_in = [ 'batch10']
+    sub_dir_out = [ 'batch10-split']
     for dir_in, dir_out in zip(sub_dir_in, sub_dir_out):
         assert dir_out.split('-')[0] == dir_in
         dir_in = os.path.join(root, dir_in)
