@@ -20,8 +20,8 @@ def modification_1(file,output):
         return debug
     # newbook = openpyxl.Workbook()
     # sheet = newbook.active
-    sheet = workbook.create_sheet('员工专业学历new')
-    # sheet.title = '员工专业学历'
+    sheet = old_sheet
+    sheet.title = '员工专业学历new'
     for row in old_sheet.iter_rows():
         for cell in row:
             sheet[cell.coordinate].value = cell.value

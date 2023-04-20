@@ -47,7 +47,10 @@ def recognize_table(table: Table):
     result = []
     for row in table.rows:
         cells = row.cells
-        result.append([re.sub(r'\s+', '', i.text) for i in cells])
+        row_cells = [re.sub(r'\s+', '', i.text) for i in cells]
+        if '股东姓名/名称' in row_cells and '持股数量(万股)' in row_cells and '比例' in row_cells:
+            a = 1
+        result.append(row_cells)
     return result
 
 def read_merged_doc(batch_files):
@@ -432,7 +435,7 @@ def post_process2(content):
 
 def extract_table_given_key_caiwukuaiji_xinxi(filename, total_doc_content):
     key = '财务会计信息与管理层分析'
-    chapter_pat = re.compile(r'^第八节\s*财务会计信息与管理层.{0,4}分析$')
+    chapter_pat = re.compile(r'^第.节\s*财务会计信息与管理层.{0,4}分析$')
     chapter_match = [idx for idx, i in enumerate(total_doc_content)  if isinstance(i, str) and chapter_pat.search(i.strip())]
     if not chapter_match:
         print(f'not found {filename}')
@@ -508,7 +511,7 @@ def extract_table_given_key_guben_bianhua(filename, total_doc_content):
             result.extend(total_doc_content[lineno-4:lineno+2])
             result.append('#' * 100)
 
-    pat = re.compile(r'^.{0,2}一.{0,2}本次发行前后')
+    pat = re.compile(r'^.{0,2}一.{0,2}本次.{0,4}发行前后')
     break_line = re.compile(r'######')
     result = post_process_add_table_tag(result, pat, break_line=break_line)
     return result
@@ -810,6 +813,8 @@ def yewu_yu_jishu_chapter(filename, total_doc_content, sub_dir):
 def process_all_file_concurrent(filename, file_batch, root, sub_dir):
     file_batch = [os.path.join(root, sub_dir, i) for i in file_batch]
     total_doc_content = read_merged_doc(file_batch)
+    # 前十大股东持股情况
+    result_top10_gudong = extract_table_given_key_top10_gudong(filename, total_doc_content)
     # 业务与技术章节提取
     result_yewu_and_jishu = yewu_yu_jishu_chapter(filename, total_doc_content, sub_dir)
     #经营成果分析
@@ -836,8 +841,6 @@ def process_all_file_concurrent(filename, file_batch, root, sub_dir):
     result_zhuyingshouru_different_part = extract_table_given_key_zhuying_different_part(filename, total_doc_content)
     # 毛利和毛利率分析
     result_maolilv = extract_table_given_key_maolilv(filename, total_doc_content)
-    # 前十大股东持股情况
-    result_top10_gudong = extract_table_given_key_top10_gudong(filename, total_doc_content)
     # 发行人符合科创属性、行业领域要求
     result_meet_demand = extract_table_given_key_meet_demand(filename, total_doc_content)
     result = {
@@ -862,21 +865,21 @@ def process_all_file_concurrent(filename, file_batch, root, sub_dir):
     return
 
 def main():
-    multi_p = 10
-    # multi_p = False
+    # multi_p = 10
+    multi_p = False
 
-    root = r'C:\Users\hujunchao\Documents\PdfDir\original\招股书docx'
+    root = r'E:\part_time\招股书docx'
     sub_dirs = [
-        'batch1-主',
-        'batch2-主',
-        'batch3-主',
-        'batch4-主',
-        'batch5-主',
-        'batch6-主',
-        'batch7-主',
-        'batch8-主',
-        'batch9-主',
-        'batch10-主',
+        # 'batch1',
+        'batch2',
+        # 'batch3',
+        # 'batch4',
+        # 'batch5',
+        # 'batch6',
+        # 'batch7',
+        # 'batch8-主',
+        # 'batch9-主',
+        # 'batch10-主',
     ]
     # sub_dirs = ['batch7-主', 'batch7-次']
     # sub_dirs = ['batch1', 'batch1-次']
@@ -886,7 +889,7 @@ def main():
         # all_files = [i for i in all_files if i.startswith('zg-688004')]
         merged = merge_files(all_files)
         merged = [(filename, file_batch, root, sub_dir) for filename, file_batch in merged
-                  # if filename == 'zg-688020'
+                  if filename == '利元亨(688499.SH)'
                   ]
         if multi_p:
             pool = Pool(multi_p)
@@ -894,7 +897,10 @@ def main():
         else:
             [process_all_file_concurrent(*i) for i in merged]
 
+'''
+利元亨(688499.SH)
 
+'''
 if __name__ == '__main__':
 
     main()

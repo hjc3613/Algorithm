@@ -23,16 +23,17 @@ def pdf_spliter(in_file, out_prefix, max_pages):
                 output.write(outputStream)
         except:
             print('error: ', in_file, idx, start, end)
-            traceback.format_exc()
+            print(traceback.format_exc())
 
 def main():
-    root = r'C:\Users\hujunchao\Documents\PdfDir\original\招股书'
-    sub_dir_in = [ 'batch10']
-    sub_dir_out = [ 'batch10-split']
+    root = r'E:\part_time\招股书原始'
+    sub_dir_in = [ 'batch7']
+    sub_dir_out = [ 'batch7-split']
     for dir_in, dir_out in zip(sub_dir_in, sub_dir_out):
         assert dir_out.split('-')[0] == dir_in
         dir_in = os.path.join(root, dir_in)
         dir_out = os.path.join(root, dir_out)
+        os.makedirs(dir_out, exist_ok=True)
         for file in tqdm(os.listdir(dir_in)):
             path_in = os.path.join(dir_in, file)
             path_out = os.path.join(dir_out, file)

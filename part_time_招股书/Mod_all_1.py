@@ -23,6 +23,8 @@ for root, dirs, files in os.walk(directory):
     if '员工专业学历' in dirs:
         dirs.remove('员工专业学历')
     for filename in files:
+        # if not any([x in filename for x in ['py','txt','json','zip']]):
+        #     file_path.append(os.path.join(root, filename))
         if filename.endswith('.xlsx'):
             file_path.append(os.path.join(root, filename))
 
