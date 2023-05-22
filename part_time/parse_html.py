@@ -12,8 +12,6 @@ from bs4 import BeautifulSoup
 from flatten_json import flatten
 
 def find_all_titles(html:List[BeautifulSoup]):
-    # bs_list = [BeautifulSoup(i, 'lxml') for i in html]
-    # titles = [(idx,i.text) for idx, i in enumerate(html) if i.find('span') and i.span.attrs.get('style')=='font-weight:bold;']
     titles = []
     for idx, i in enumerate(html):
         for j in i.find_all('span'):
@@ -35,7 +33,7 @@ def is_hierarchy_2(text):
     text = re.sub(r'\s+', '', text)
     patterns = [
         (re.compile(r'[一二三四五六七八九].{0,2}经营情况讨论与分析'), '经营情况讨论与分析'),
-        (re.compile(r'[一二三四五六七八九].{0,2}报告期内公司所从事的主要业务、经营模式、行业情况及研发情况说明'), '报告期内公司所从事的主要业务、经营模式、行业情况及研发情况说明'),
+        (re.compile(r'[一二三四五六七八九].{0,2}(报告期内公司所从事的主要业务、经营模式、行业情况及研发情况说明|报告期内公司所属行业及主营业务情况说明)'), '报告期内公司所从事的主要业务、经营模式、行业情况及研发情况说明'),
         (re.compile(r'[一二三四五六七八九].{0,2}报告期内核心竞争力分析'), '报告期内核心竞争力分析'),
         (re.compile(r'[一二三四五六七八九].{0,2}风险因素'), '风险因素'),
         (re.compile(r'[一二三四五六七八九].{0,2}报告期内主要经营情况'), '报告期内主要经营情况'),
@@ -49,31 +47,33 @@ def is_hierarchy_2(text):
 
 def is_hierarchy_3(text):
     text = re.sub(r'\s+', '', text)
+    if '三、财务风险' in text:
+        a = 1
     patterns = [
         # 二 报告期内公司所从事的主要业务、经营模式、行业情况及研发情况说明
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*主要业务、主要产品或服务情况'), '主要业务、主要产品或服务情况'),
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*主要经营模式'), '主要经营模式'),
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*所处行业情况'), '所处行业情况'),
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*核心技术与研发进展'), '核心技术与研发进展'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}主要业务、主要产品或服务情况'), '主要业务、主要产品或服务情况'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}主要经营模式'), '主要经营模式'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}所处行业情况'), '所处行业情况'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}核心技术与研发进展'), '核心技术与研发进展'),
         # 三 报告期内核心竞争力分析
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*核心竞争力分析'), '核心竞争力分析'),
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*报告期内发生的导致公司核心竞争力受到严重影响的事件、影响分析及应对措施'), '报告期内发生的导致公司核心竞争力受到严重影响的事件、影响分析及应对措施'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}核心竞争力分析'), '核心竞争力分析'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}报告期内发生的导致公司核心竞争力受到严重影响的事件、影响分析及应对措施'), '报告期内发生的导致公司核心竞争力受到严重影响的事件、影响分析及应对措施'),
         # 四 风险因素
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*尚未盈利的风险'), '尚未盈利的风险'),
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*业绩大幅下滑或亏损的风险'), '业绩大幅下滑或亏损的风险'),
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*核心竞争力风险'), '核心竞争力风险'),
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*经营风险'), '经营风险'),
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*财务风险'), '财务风险'),
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*行业风险'), '行业风险'),
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*宏观环境风险'), '宏观环境风险'),
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*存托凭证相关风险'), '存托凭证相关风险'),
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*其他重大风险'), '其他重大风险'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}尚未盈利的风险'), '尚未盈利的风险'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}业绩大幅下滑或亏损的风险'), '业绩大幅下滑或亏损的风险'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}核心竞争力风险'), '核心竞争力风险'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}经营风险'), '经营风险'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}财务风险'), '财务风险'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}行业风险'), '行业风险'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}宏观环境风险'), '宏观环境风险'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}存托凭证相关风险'), '存托凭证相关风险'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}其他重大风险'), '其他重大风险'),
         # 五 报告期内主要经营情况
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*主营业务分析'), '主营业务分析'),
-        # 六 关于公司未来发展的讨论与分析
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*行业格局和趋势'), '行业格局和趋势'),
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*公司发展战略'), '公司发展战略'),
-        (re.compile(r'[(（][一二三四五六七八九][）)]\s*经营计划'), '经营计划'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}主营业务分析'), '主营业务分析'),
+        # 六 关于公司未来发展的讨论与分析.{0,3}
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}行业格局和趋势'), '行业格局和趋势'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}公司发展战略'), '公司发展战略'),
+        (re.compile(r'[(（]?[一二三四五六七八九][）)]?\s*.{0,3}经营计划'), '经营计划'),
         # (re.compile(r'[(（][一二三四五六七八九][）)]\s*其他'), '其他'),
     ]
     for p, key in patterns:
@@ -131,11 +131,11 @@ def find_main_titles(all_titles):
 def extract_3_chapter(html, filename):
     titles = [(idx,i) for idx,i in enumerate(html) if
               re.search('style="font-weight:bold;"', i)
-              and (re.search(r'第三节\s*(</?span.*?>)*管理层讨论与分析', i) or re.search(r'第四节\s*(</?span.*?>)*公司治理',i) )
+              and (re.search(r'第[二三四]节\s*(</?span.*?>)*管理层讨论与分析', i) or re.search(r'第[三四五]节\s*(</?span.*?>)*(公司治理|董事会报告)',i) )
               and re.search(r'<h\d>', i)
               ]
     if not len(titles) == 2:
-        chapter_34 = [i for i in html if re.search('style="font-weight:bold;"', i) and re.search(r'<h\d>',i) and re.search(r'第[三四]节',i)]
+        chapter_34 = [i for i in html if re.search('style="font-weight:bold;"', i) and re.search(r'<h\d>',i) and re.search(r'第.{1,2}节',i)]
         chapter_34 = [BeautifulSoup(i).text.strip() for i in chapter_34]
         print(f'{filename} 没有找到章节名字，疑似章节名：{" | ".join(chapter_34)}')
         return None
@@ -168,8 +168,8 @@ def generate_to_json(df:pd.DataFrame, cur_depth, max_depth=4, col_name='hierarch
 
 
 def main():
-    root = r'C:\Users\hujunchao\Documents\PdfDir\original\2021年科创板年报html'
-    save_dir = 'structured_file'
+    root = r'E:\part_time\管理层讨论与分析\PDF2HTML\2022'
+    save_dir = 'structured_file3'
     os.makedirs(save_dir, exist_ok=True)
     all_htmls = os.listdir(root)
     # all_htmls = ['688161_20220330_2_j4YGw1bm.htm']
@@ -204,7 +204,7 @@ def main():
         save_name = html_file.replace('.htm', '.json')
         with open(os.path.join(save_dir, save_name), mode='w', encoding='utf8') as f:
             json.dump(result, f, indent=4, ensure_ascii=False)
-        # print()
+        df.to_excel(os.path.join(save_dir, html_file.replace('.htm', '.xlsx')))
     return
 
 def json2excel():
@@ -244,5 +244,5 @@ if __name__ == '__main__':
     # 第一步：解析html，生成结构化的json，保存到structured_file下
     main()
     # 第二步：读取structured_file下的json，生成Excel文件
-    json2excel()
+    # json2excel()
     # get_new_files()
